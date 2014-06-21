@@ -8,7 +8,7 @@ using namespace DirectX;
 
 struct VertexData
 {
-	XMFLOAT3 pos;
+	XMFLOAT4 pos;
 };
 
 DeviceManager::DeviceManager()
@@ -175,14 +175,19 @@ HRESULT DeviceManager::InitDX11(HWND hwnd)
 	// Create vertex buffer
 	VertexData vertices[] =
 	{
-		XMFLOAT3(0.0f, 0.5f, 0.5f),
-		XMFLOAT3(0.5f, -0.5f, 0.5f),
-		XMFLOAT3(-0.5f, -0.5f, 0.5f),
+		XMFLOAT4(-0.5f, 0.5f, 0.5f,1.0f),
+		XMFLOAT4(0.5f,0.5f,0.5f,1.0f),
+		XMFLOAT4(0.5f, -0.5f, 0.5f,1.0f),
+		XMFLOAT4(0.5f, -0.5f, 0.5f,1.0f),
+		XMFLOAT4(-0.5f,-0.5f,0.5f,1.0f),
+		XMFLOAT4(-0.5f,0.5f,0.5f,1.0f)
+
 	};
+
 	D3D11_BUFFER_DESC bd;
 	ZeroMemory(&bd, sizeof(bd));
 	bd.Usage = D3D11_USAGE_DEFAULT;
-	bd.ByteWidth = sizeof(VertexData)* 3;
+	bd.ByteWidth = sizeof(VertexData)* 6;
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	bd.CPUAccessFlags = 0;
 	D3D11_SUBRESOURCE_DATA InitData;
@@ -229,10 +234,10 @@ void DeviceManager::RenderDX11()
 	float ClearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f }; //red,green,blue,alpha
 	pDeviceContext->ClearRenderTargetView(g_pRenderTargetView, ClearColor);
 
-	// Render a triangle
+	// Render
 	pDeviceContext->VSSetShader(vShader, NULL, 0);
 	pDeviceContext->PSSetShader(pShader, NULL, 0);
-	pDeviceContext->Draw(3, 0);
+	pDeviceContext->Draw(6, 0);
 
 	//結果をウインドウに反映
 	g_pSwapChain->Present(0, 0);
