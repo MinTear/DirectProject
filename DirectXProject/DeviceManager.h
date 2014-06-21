@@ -13,6 +13,11 @@ private:
 	ID3D11DeviceContext*	pDeviceContext = NULL;
 	IDXGISwapChain*			g_pSwapChain = NULL;
 	ID3D11RenderTargetView*	g_pRenderTargetView = NULL;
+	ID3D11VertexShader* vShader;
+	ID3D11PixelShader* pShader;
+	ID3D11InputLayout* iLayout;
+	ID3D11Buffer* pBuffer;
+
 
 
 public:

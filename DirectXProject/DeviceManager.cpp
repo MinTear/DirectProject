@@ -1,10 +1,46 @@
 #include "stdafx.h"
 #include "DeviceManager.h"
+#include <d3d11.h>
+#include<directxmath.h>
+#include<d3dcompiler.h>
 
+using namespace DirectX;
+
+struct VertexData
+{
+	XMFLOAT3 pos;
+};
 
 DeviceManager::DeviceManager()
 {
 }
+
+	// シェーダのコンパイル
+HRESULT CompileShaderFromFile(WCHAR* fname, LPCSTR entry_point, LPCSTR shd_model, ID3DBlob** pp_blob_out)
+{
+		HRESULT hr = S_OK;
+
+		DWORD shd_flags = D3DCOMPILE_ENABLE_STRICTNESS;
+#if defined( DEBUG ) || defined( _DEBUG )
+		shd_flags |= D3DCOMPILE_DEBUG;
+#endif
+
+		ID3DBlob* err_blob;
+		hr = D3DCompileFromFile(fname, NULL, NULL, entry_point, shd_model,
+			shd_flags, 0, pp_blob_out, &err_blob);
+		if (FAILED(hr)){
+			if (err_blob != NULL){
+				OutputDebugStringA((char*)err_blob->GetBufferPointer());
+			}
+			if (err_blob) err_blob->Release();
+			return hr;
+		}
+		if (err_blob){
+			err_blob->Release();
+		}
+		return S_OK;
+}
+
 
 HRESULT DeviceManager::InitDX11(HWND hwnd)
 {
@@ -82,6 +118,87 @@ HRESULT DeviceManager::InitDX11(HWND hwnd)
 	vp.TopLeftY = 0;
 	pDeviceContext->RSSetViewports(1, &vp);
 
+	// Compile the vertex shader
+	ID3DBlob* pVSBlob = NULL;
+
+	hr = CompileShaderFromFile(L"Tutorial02.fx", "VS", "vs_4_0", &pVSBlob);
+	if (FAILED(hr))
+	{
+		MessageBox(NULL,
+			L"The FX file cannot be compiled.  Please run this executable from the directory that contains the FX file.", L"Error", MB_OK);
+		return hr;
+	}
+
+	// Create the vertex shader
+	hr = pDevice->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), NULL, &vShader);
+	if (FAILED(hr))
+	{
+		pVSBlob->Release();
+		return hr;
+	}
+
+	// Define the input layout
+	D3D11_INPUT_ELEMENT_DESC layout[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
+	UINT numElements = ARRAYSIZE(layout);
+
+	// Create the input layout
+	hr = pDevice->CreateInputLayout(layout, numElements, pVSBlob->GetBufferPointer(),
+		pVSBlob->GetBufferSize(), &iLayout);
+	pVSBlob->Release();
+	if (FAILED(hr))
+		return hr;
+
+	// Set the input layout
+	pDeviceContext->IASetInputLayout(iLayout);
+
+	// Compile the pixel shader
+	ID3DBlob* pPSBlob = NULL;
+
+
+	hr = CompileShaderFromFile(L"Tutorial02.fx", "PS", "ps_4_0", &pPSBlob);
+	if (FAILED(hr))
+	{
+		MessageBox(NULL,
+			L"The FX file cannot be compiled.  Please run this executable from the directory that contains the FX file.", L"Error", MB_OK);
+		return hr;
+	}
+
+	// Create the pixel shader
+	hr = pDevice->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), NULL, &pShader);
+	pPSBlob->Release();
+	if (FAILED(hr))
+		return hr;
+
+	// Create vertex buffer
+	VertexData vertices[] =
+	{
+		XMFLOAT3(0.0f, 0.5f, 0.5f),
+		XMFLOAT3(0.5f, -0.5f, 0.5f),
+		XMFLOAT3(-0.5f, -0.5f, 0.5f),
+	};
+	D3D11_BUFFER_DESC bd;
+	ZeroMemory(&bd, sizeof(bd));
+	bd.Usage = D3D11_USAGE_DEFAULT;
+	bd.ByteWidth = sizeof(VertexData)* 3;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = 0;
+	D3D11_SUBRESOURCE_DATA InitData;
+	ZeroMemory(&InitData, sizeof(InitData));
+	InitData.pSysMem = vertices;
+	hr = pDevice->CreateBuffer(&bd, &InitData, &pBuffer);
+	if (FAILED(hr))
+		return hr;
+
+	// Set vertex buffer
+	UINT stride = sizeof(VertexData);
+	UINT offset = 0;
+	pDeviceContext->IASetVertexBuffers(0, 1, &pBuffer, &stride, &offset);
+
+	// Set primitive topology
+	pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	g_InitDX11 = true;
 	return S_OK;
 }
@@ -93,6 +210,10 @@ void DeviceManager::ExitDX11()
 
 	if (pDeviceContext) pDeviceContext->ClearState();
 
+	if (pBuffer) pBuffer->Release();
+	if (iLayout) iLayout->Release();
+	if (vShader) vShader->Release();
+	if (pShader) pShader->Release();
 	if (g_pRenderTargetView) g_pRenderTargetView->Release();
 	if (g_pSwapChain) g_pSwapChain->Release();
 	if (pDeviceContext) pDeviceContext->Release();
@@ -107,6 +228,11 @@ void DeviceManager::RenderDX11()
 	// 指定色で画面クリア
 	float ClearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f }; //red,green,blue,alpha
 	pDeviceContext->ClearRenderTargetView(g_pRenderTargetView, ClearColor);
+
+	// Render a triangle
+	pDeviceContext->VSSetShader(vShader, NULL, 0);
+	pDeviceContext->PSSetShader(pShader, NULL, 0);
+	pDeviceContext->Draw(3, 0);
 
 	//結果をウインドウに反映
 	g_pSwapChain->Present(0, 0);

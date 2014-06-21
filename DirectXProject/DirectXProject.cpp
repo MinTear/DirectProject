@@ -1,6 +1,6 @@
 // DirectXProject.cpp : アプリケーションのエントリ ポイントを定義します。
 //
-
+#include "stdafx.h"
 #include "DirectXProject.h"
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
