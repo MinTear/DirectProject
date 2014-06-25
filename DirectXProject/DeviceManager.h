@@ -1,7 +1,9 @@
 #pragma once
 #include <d3d11.h>
+#include "SettingDevice.h"
 
 class DeviceManager
+	: SettingDevice
 {
 private:
 	// DX11で使用するグローバル変数
