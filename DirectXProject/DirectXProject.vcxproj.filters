@@ -63,5 +63,8 @@
     <Image Include="DirectXProject.ico">
       <Filter>リソース ファイル</Filter>
     </Image>
+    <Image Include="BuildingsHighRise0295_2_M.jpg">
+      <Filter>リソース ファイル</Filter>
+    </Image>
   </ItemGroup>
 </Project>

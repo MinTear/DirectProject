@@ -16,7 +16,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 
 	// グローバル文字列を初期化しています。
 	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-	LoadString(hInstance, IDC_DIRECTXPROJECT, szWindowClass, MAX_LOADSTRING);
+	LoadString(hInstance, IDC_DIRECTXPROJECT, szWindowClass,MAX_LOADSTRING);
 	MyRegisterClass(hInstance);
 
 	// アプリケーションの初期化を実行します:

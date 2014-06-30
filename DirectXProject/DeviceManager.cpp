@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "DeviceManager.h"
 #include <d3d11.h>
+#include <D3DX11.h>
 #include<directxmath.h>
 #include<d3dcompiler.h>
 
@@ -8,7 +9,8 @@ using namespace DirectX;
 
 struct VertexData
 {
-	XMFLOAT4 pos;
+	XMFLOAT4 Pos;
+	XMFLOAT2 Tex;
 };
 
 DeviceManager::DeviceManager()
@@ -98,6 +100,23 @@ HRESULT DeviceManager::InitDX11(HWND hwnd)
 		return hr;
 	}
 
+	D3D11_TEXTURE2D_DESC descDepth;
+	ZeroMemory(&descDepth, sizeof(descDepth));
+	descDepth.Width = width;
+	descDepth.Height = height;
+	descDepth.MipLevels = 1;
+	descDepth.ArraySize = 1;
+	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	descDepth.SampleDesc.Count = 1;
+	descDepth.SampleDesc.Quality = 0;
+	descDepth.Usage = D3D11_USAGE_DEFAULT;
+	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	descDepth.CPUAccessFlags = 0;
+	descDepth.MiscFlags = 0;
+	hr = pDevice->CreateTexture2D(&descDepth, NULL, &g_pDepthStencil);
+	if (FAILED(hr))
+		return hr;
+
 	hr = pDevice->CreateRenderTargetView(back_buff, NULL, &g_pRenderTargetView);
 	back_buff->Release();//GetBufferで取得、使用後はRelease
 	if (FAILED(hr)){
@@ -141,6 +160,8 @@ HRESULT DeviceManager::InitDX11(HWND hwnd)
 	D3D11_INPUT_ELEMENT_DESC layout[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+
 	};
 	UINT numElements = ARRAYSIZE(layout);
 
@@ -175,16 +196,34 @@ HRESULT DeviceManager::InitDX11(HWND hwnd)
 	// Create vertex buffer
 	VertexData vertices[] =
 	{
-		XMFLOAT4(-0.5f, 0.5f, 0.5f,1.0f),
-		XMFLOAT4(0.5f,0.5f,0.5f,1.0f),
-		XMFLOAT4(0.5f, -0.5f, 0.5f,1.0f),
-		XMFLOAT4(0.5f, -0.5f, 0.5f,1.0f),
-		XMFLOAT4(-0.5f,-0.5f,0.5f,1.0f),
-		XMFLOAT4(-0.5f,0.5f,0.5f,1.0f)
+		{ XMFLOAT4(-0.800f, 0.581f, 0.5f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
+		{ XMFLOAT4(0.800f, 0.581f, 0.5f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
+		{ XMFLOAT4(0.800f, -0.581f, 0.5f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
+		{ XMFLOAT4(0.800f, -0.581f, 0.5f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
+		{ XMFLOAT4(-0.800f, -0.581f, 0.5f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+		{ XMFLOAT4(-0.800f, 0.581f, 0.5f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
 
 	};
 
 	settingBuffer(hr, vertices, pDevice, pDeviceContext, pBuffer);
+
+	hr = D3DX11CreateShaderResourceViewFromFile(pDevice, L"BuildingsHighRise0295_2_M.jpg", NULL, NULL, &shaderRV, NULL);
+	if (FAILED(hr))
+		return hr;
+
+	// Create the sample state
+	D3D11_SAMPLER_DESC sampDesc;
+	ZeroMemory(&sampDesc, sizeof(sampDesc));
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	sampDesc.MinLOD = 0;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	hr = pDevice->CreateSamplerState(&sampDesc, &SamplerLinear);
+	if (FAILED(hr))
+		return hr;
 	
 	return S_OK;
 }
@@ -196,6 +235,8 @@ void DeviceManager::ExitDX11()
 
 	if (pDeviceContext) pDeviceContext->ClearState();
 
+	if (SamplerLinear) SamplerLinear->Release();
+	if (shaderRV) shaderRV->Release();
 	if (pBuffer) pBuffer->Release();
 	if (iLayout) iLayout->Release();
 	if (vShader) vShader->Release();
@@ -218,6 +259,8 @@ void DeviceManager::RenderDX11()
 	// Render
 	pDeviceContext->VSSetShader(vShader, NULL, 0);
 	pDeviceContext->PSSetShader(pShader, NULL, 0);
+	pDeviceContext->PSSetSamplers(0, 1, &SamplerLinear);	
+	pDeviceContext->PSSetShaderResources(0, 1, &shaderRV);
 	pDeviceContext->Draw(6, 0);
 
 	//結果をウインドウに反映

@@ -8,7 +8,8 @@ class SettingDevice
 public:
 	struct VertexData
 	{
-		XMFLOAT4 pos;
+		XMFLOAT4 Pos;
+		XMFLOAT2 Tex;
 	};
 
 

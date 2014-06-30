@@ -18,7 +18,10 @@ private:
 	ID3D11VertexShader* vShader;
 	ID3D11PixelShader* pShader;
 	ID3D11InputLayout* iLayout;
-	ID3D11Buffer* pBuffer;
+	ID3D11Buffer* pBuffer; 
+	ID3D11Texture2D* g_pDepthStencil = NULL;
+	ID3D11ShaderResourceView* shaderRV = NULL;
+	ID3D11SamplerState*  SamplerLinear = NULL;
 
 
 
